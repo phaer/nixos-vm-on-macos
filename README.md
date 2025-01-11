@@ -6,7 +6,7 @@ It is currently not much more than a quick weekend hack and therefore **experime
 
 # Usage
 
-To start a non-graphical, rather minimal VM with a serial console, but no peristent storage nor networking yet - run:
+To start a non-graphical, rather minimal VM with a serial console, but no peristent storage nor host-to-guest networking yet (guest-to-internet works fine, except for ICMP) - run:
 
 ``` shellsession
 nix run .\#nixosConfigurations.minimal-vm.config.system.build.vm -L

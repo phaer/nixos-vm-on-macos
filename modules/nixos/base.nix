@@ -90,4 +90,14 @@
       neededForBoot = true;
     };
   };
+
+  ## Networking
+  # Use systemd-networkd instead of the older, scripted network configuration in NixOS.
+  networking.useNetworkd = true;
+  # Use all physical interfaces to get DHCP leases for both ipv4 and ipv6.
+  systemd.network.networks."10-uplink" = {
+    matchConfig.Name = lib.mkDefault "en* eth*";
+    networkConfig.DHCP = lib.mkDefault "yes";
+  };
+
 }

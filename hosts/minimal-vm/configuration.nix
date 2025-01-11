@@ -13,6 +13,14 @@
     flake.modules.nixos.base
   ];
 
+  # Set how many  CPU cores and MB of memory to allocate
+  # to this VM. Depending on your machine and the amount of VMs
+  # you want to run, those might be good to adapt.
+  virtualisation = {
+    cores = lib.mkDefault 4;
+    memorySize = lib.mkDefault (4 * 1024);
+  };
+
   # Automatically log in as root on the console. # This makes it
   # unecessary to configure any credentials for simple ephmeral VM.
   services.getty.autologinUser = lib.mkDefault "root";

@@ -21,7 +21,7 @@ nix run .\#nixosConfigurations.minimal-vm.config.system.build.vm -L
 
 # What needs work
 
-* Network: Not integrated yet. Plan is to package [gvisor-tap-vsock](https://github.com/containers/gvisor-tap-vsock) in nixpkgs and use that.
+* Host-to-Guest-Networking: Not integrated yet. Plan is to package [gvisor-tap-vsock](https://github.com/containers/gvisor-tap-vsock) or https://github.com/njhsi/macos-virtio-net in nixpkgs and use either of that.
 * GPU: Earlier tests with vfkit and graphical output worked quite well,
   just didn't integrate it in the module so far.
 * Persistence: Should be easy, both `virtio-fs` and `virtio-blk` work.  Needs configuration and testing. Might be just need a virtio block device plus system repart.

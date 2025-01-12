@@ -8,8 +8,25 @@
     ./from-qemu-vm.nix
   ];
 
-  system.build.vm =
+  options =
     let
+      inherit (lib) mkOption types;
+    in
+    {
+      virtualisation.macAddress = mkOption {
+        default = null;
+        example = "00:11:22:33:44:55";
+        type = types.nullOr (types.str);
+        description = ''
+          MAC address of the virtual machine. Leave empty to generate a random one.
+        '';
+      };
+    };
+
+  config.system.build.vm =
+    let
+      cfg = config.virtualisation;
+
       # Instantiate our nixpkgs version once more, this time for darwin.
       # This is needed so that we get binaries for darwin, not linux for
       # all of the dependencies the script below, such as bash # to vfkit.
@@ -22,8 +39,8 @@
       cmdline = lib.concatStringsSep " " (
         config.boot.kernelParams or [ ] ++ [ "init=${config.system.build.toplevel}/init" ]
       );
-
-      rosetta = lib.optionalString config.virtualisation.rosetta.enable "--device rosetta,mountTag=rosetta";
+      rosetta = lib.optionalString cfg.rosetta.enable "--device rosetta,mountTag=rosetta";
+      macAddress = lib.optionalString (cfg.macAddress != null) ",mac=${cfg.macAddress}";
 
     in
     pkgsDarwin.writeShellApplication {
@@ -34,13 +51,13 @@
       text = ''
         vfkit \
         --bootloader "linux,kernel=${kernel},initrd=${initrd},cmdline=\"${cmdline}\"" \
-          --device virtio-net,nat \
+          --device "virtio-net,nat${macAddress}" \
           --device virtio-serial,stdio \
           --device virtio-rng \
           ${rosetta} \
           --device virtio-fs,sharedDir=/nix/store/,mountTag=nix-store \
-          --cpus ${toString config.virtualisation.cores} \
-          --memory ${toString config.virtualisation.memorySize}
+          --cpus ${toString cfg.cores} \
+          --memory ${toString cfg.memorySize}
       '';
     };
 }

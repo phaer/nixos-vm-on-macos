@@ -21,6 +21,14 @@
           MAC address of the virtual machine. Leave empty to generate a random one.
         '';
       };
+      virtualisation.ephemeral = mkOption {
+        default = true;
+        type = types.bool;
+        description = ''
+          Whether the VM should run without persistent storage, i.e. from tmpfs.
+        '';
+      };
+
     };
 
   config.system.build.vm =
@@ -39,9 +47,14 @@
       cmdline = lib.concatStringsSep " " (
         config.boot.kernelParams or [ ] ++ [ "init=${config.system.build.toplevel}/init" ]
       );
-      rosetta = lib.optionalString cfg.rosetta.enable "--device rosetta,mountTag=rosetta";
-      macAddress = lib.optionalString (cfg.macAddress != null) ",mac=${cfg.macAddress}";
-
+      macAddress = lib.optionalString (cfg.macAddress != null)
+        ",mac=${cfg.macAddress}";
+      rosetta = lib.optionalString cfg.rosetta.enable
+        "--device rosetta,mountTag=rosetta";
+      disk = lib.optionalString (!cfg.ephemeral)
+        "--device \"virtio-blk,path=$PWD/disk.img\"";
+      makeDiskImage = lib.optionalString (!cfg.ephemeral)
+        "truncate -s ${toString cfg.diskSize}M disk.img";
     in
     pkgsDarwin.writeShellApplication {
       name = "vfkit-vm";
@@ -49,12 +62,14 @@
         pkgsDarwin.vfkit
       ];
       text = ''
+        ${makeDiskImage}
         vfkit \
         --bootloader "linux,kernel=${kernel},initrd=${initrd},cmdline=\"${cmdline}\"" \
           --device "virtio-net,nat${macAddress}" \
           --device virtio-serial,stdio \
           --device virtio-rng \
           ${rosetta} \
+          ${disk} \
           --device virtio-fs,sharedDir=/nix/store/,mountTag=nix-store \
           --cpus ${toString cfg.cores} \
           --memory ${toString cfg.memorySize}

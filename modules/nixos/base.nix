@@ -1,6 +1,7 @@
 {
   lib,
   pkgs,
+  config,
   ...
 }:
 {
@@ -89,7 +90,7 @@
       # the hosts nix store mounted read-only but overlayed with
       # another tmpfs.
       fileSystems = {
-        "/" = {
+        "/" = lib.mkIf (config.virtualisation.ephemeral) {
           device = "none";
           fsType = "tmpfs";
           options = [
@@ -119,5 +120,29 @@
       };
     }
 
+    ## Persistent root
+    (lib.mkIf (!config.virtualisation.ephemeral) {
+      fileSystems = {
+        "/" = {
+          device = "/dev/vda1";
+          fsType = "ext4";
+          neededForBoot = true;
+        };
+      };
+      boot.initrd.systemd.repart.enable = true;
+      boot.initrd.systemd.repart.device = "/dev/vda";
+      boot.initrd.systemd.repart.empty = "require";
+
+      #boot.initrd.systemd.services."systemd-fsck-root".after = [
+      #  "systemd-repart.service"
+      #];
+
+      systemd.repart.partitions = {
+        "10-root" = {
+          Type = "root";
+          Format = "ext4";
+        };
+      };
+    })
   ];
 }

@@ -24,6 +24,10 @@
   # This is an optional, non-upstream option defined in this repo.
   virtualisation.macAddress = "f6:25:e2:48:58:1e";
 
+  # Create "disk.img" on startup as persistent storage
+  # This is an optional, non-upstream option defined in this repo.
+  virtualisation.ephemeral = false;
+
   # Automatically log in as root on the console. # This makes it
   # unecessary to configure any credentials for simple ephmeral VM.
   services.getty.autologinUser = lib.mkDefault "root";

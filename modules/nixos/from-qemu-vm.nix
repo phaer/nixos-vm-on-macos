@@ -1,9 +1,11 @@
 # Options borroed from nixpkgs/nixos/modules/virtualisation/qemu-vm.nix
-{ lib, ... }:
+{ lib, modulesPath, ... }:
 let
   inherit (lib) mkOption types;
 in
 {
+  imports = [ "${modulesPath}/virtualisation/disk-size-option.nix" ];
+
   options = {
     virtualisation.memorySize = mkOption {
       type = types.ints.positive;
@@ -22,5 +24,9 @@ in
         host system.
       '';
     };
+  };
+
+  config = {
+    virtualisation.diskSizeAutoSupported = false;
   };
 }

@@ -1,6 +1,7 @@
 {
   lib,
   pkgs,
+  config,
   ...
 }:
 {
@@ -88,35 +89,45 @@
       # But for now it just boots into a small tmpfs with
       # the hosts nix store mounted read-only but overlayed with
       # another tmpfs.
-      fileSystems = {
-        "/" = {
-          device = "none";
-          fsType = "tmpfs";
-          options = [
-            "defaults"
-            "size=1G"
-            "mode=755"
-          ];
-        };
-        "/nix/store" = {
-          overlay = {
-            lowerdir = [ "/nix/.ro-store" ];
-            upperdir = "/nix/.rw-store/upper";
-            workdir = "/nix/.rw-store/work";
+      fileSystems =
+        {
+          "/" = {
+            device = "none";
+            fsType = "tmpfs";
+            options = [
+              "defaults"
+              "size=1G"
+              "mode=755"
+            ];
           };
-        };
-        "/nix/.ro-store" = {
-          device = "nix-store";
-          fsType = "virtiofs";
-          neededForBoot = true;
-          options = [ "ro" ];
-        };
-        "/nix/.rw-store" = {
-          fsType = "tmpfs";
-          options = [ "mode=0755" ];
-          neededForBoot = true;
-        };
-      };
+          "/nix/store" = {
+            overlay = {
+              lowerdir = [ "/nix/.ro-store" ];
+              upperdir = "/nix/.rw-store/upper";
+              workdir = "/nix/.rw-store/work";
+            };
+          };
+          "/nix/.ro-store" = {
+            device = "nix-store";
+            fsType = "virtiofs";
+            neededForBoot = true;
+            options = [ "ro" ];
+          };
+          "/nix/.rw-store" = {
+            fsType = "tmpfs";
+            options = [ "mode=0755" ];
+            neededForBoot = true;
+          };
+        }
+        // (lib.optionalAttrs (config.virtualisation.sharedDirectories != { }) (
+          lib.mapAttrs' (name: value: {
+            name = value.target;
+            value = {
+              device = name;
+              fsType = "virtiofs";
+            };
+          }) config.virtualisation.sharedDirectories
+        ));
     }
 
   ];

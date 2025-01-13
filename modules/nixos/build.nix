@@ -42,12 +42,18 @@
       rosetta = lib.optionalString cfg.rosetta.enable "--device rosetta,mountTag=rosetta";
       macAddress = lib.optionalString (cfg.macAddress != null) ",mac=${cfg.macAddress}";
       sharedDirectories = lib.optionalString (cfg.sharedDirectories != null) (
-        lib.concatStringsSep "\n" (
+        lib.concatStringsSep "\\\n" (
           lib.mapAttrsToList (
-            name: value: "--device \"virtio-fs,sharedDir=${value.source},mountTag=${name}\" \\"
+            name: value: "--device \"virtio-fs,sharedDir=${value.source},mountTag=${name}\""
           ) cfg.sharedDirectories
         )
       );
+      graphics = lib.optionalString cfg.graphics ''
+        --device virtio-gpu,width=${toString cfg.resolution.x},height=${toString cfg.resolution.y} \
+        --device virtio-input,pointing \
+        --device virtio-input,keyboard \
+        --gui \
+      '';
 
     in
     pkgsDarwin.writeShellApplication {
@@ -61,9 +67,10 @@
           --device "virtio-net,nat${macAddress}" \
           --device virtio-serial,stdio \
           --device virtio-rng \
-          ${rosetta} \
-          ${sharedDirectories} \
           --device virtio-fs,sharedDir=/nix/store/,mountTag=nix-store \
+          ${sharedDirectories} \
+          ${graphics} \
+          ${rosetta} \
           --cpus ${toString cfg.cores} \
           --memory ${toString cfg.memorySize}
       '';

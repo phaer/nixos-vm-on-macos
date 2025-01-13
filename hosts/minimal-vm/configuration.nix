@@ -20,16 +20,17 @@
     cores = lib.mkDefault 4;
     memorySize = lib.mkDefault (4 * 1024);
     sharedDirectories = {
-      home = {
-        source = "$PWD/home";
-        target = "/home";
-        };
+      persistent = {
+        source = "$PWD/persistent";
+        target = "/persistent";
+      };
     };
   };
   # Set a static MAC address to get the same IP every time.
   # This is an optional, non-upstream option defined in this repo.
   virtualisation.macAddress = "f6:25:e2:48:58:1e";
 
+  virtualisation.graphics = true;
 
   # Automatically log in as root on the console. # This makes it
   # unecessary to configure any credentials for simple ephmeral VM.

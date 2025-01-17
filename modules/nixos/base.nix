@@ -59,7 +59,19 @@
     {
       boot.kernelParams = [
         # The virtio console is known as hvc0 in the guest
+        #"systemd.show_status=true"
         "console=hvc0"
+        "systemd.log_level=debug"
+        #"systemd.log_target=console"
+        "systemd.set_credential=foo.bar:baz"
+        #"rd.systemd.unit=rescue.target"
+        #"systemd.set_credential=login.motd:foo"
+        #        "systemd.set_credential=ssh.authorized_keys.root:ecdsa-sha2-nistp256\x20AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBCwT3A8zAcCGHNBVx0lhmz3Hhygs8XXszXqARj9QzHHs/fR3J55MTT/jk/GlmOnUzVj8RIPzzwru5J+8XgtBKU8="
+      ];
+
+      services.openssh.enable = true;
+      users.users.root.openssh.authorizedKeys.keys = [
+        "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBCwT3A8zAcCGHNBVx0lhmz3Hhygs8XXszXqARj9QzHHs/fR3J55MTT/jk/GlmOnUzVj8RIPzzwru5J+8XgtBKU8="
       ];
 
       boot.initrd.kernelModules = [

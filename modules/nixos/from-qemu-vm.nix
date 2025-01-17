@@ -1,10 +1,19 @@
 # Options borroed from nixpkgs/nixos/modules/virtualisation/qemu-vm.nix
-{ lib, ... }:
+{ lib, modulesPath, ... }:
 let
   inherit (lib) mkOption types;
 in
 {
+  imports = [
+    "${modulesPath}/virtualisation/disk-size-option.nix"
+  ];
+
+  config = {
+    virtualisation.diskSizeAutoSupported = false;
+  };
+
   options = {
+
     virtualisation.memorySize = mkOption {
       type = types.ints.positive;
       default = 1024;
@@ -67,6 +76,5 @@ in
         The resolution of the virtual machine display.
       '';
     };
-
   };
 }

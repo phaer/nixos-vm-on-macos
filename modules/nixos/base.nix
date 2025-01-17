@@ -97,7 +97,7 @@
             fsType = "tmpfs";
             options = [
               "defaults"
-              "size=1G"
+              "size=${toString config.virtualisation.diskSize}M"
               "mode=755"
             ];
           };

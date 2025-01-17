@@ -79,6 +79,7 @@
       systemd.network.networks."10-uplink" = {
         matchConfig.Name = lib.mkDefault "en* eth*";
         networkConfig.DHCP = lib.mkDefault "yes";
+        dhcpV4Config.ClientIdentifier = lib.mkDefault "mac";
       };
     }
 

@@ -25,9 +25,9 @@ $ nix run .\#get-vm-ip minimal-vm
 fe80::f425:e2ff:fe48:581e%bridge100
 ```
 
-## Disable the GUI
+## Enable the GUI
 
-Set `virtualisation.graphics = false` in `configuration.nix`.
+Set `virtualisation.graphics = true;` in `configuration.nix`.
 
 # What works
 

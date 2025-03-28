@@ -18,11 +18,14 @@ The local (currently empty) directory `persistent` gets mounted to `/persistent`
 
 ## Get the IP
 
-`minimal-vm` got a static mac address defined in `virtualisation.macAddress`, which can be used to derive its ipv6 link local address by running
+`minimal-vm` has a static mac address defined in `virtualisation.macAddress`, which can be used to derive its ipv6 link local address. A legacy ipv4 address can be acquired by
+parsing `/var/db/dhcpd_leases`. A helper script to do both is included in this repository: 
 
 ``` shellsession
-$ nix run .\#get-vm-ip minimal-vm
+$ nix run .\#get-vm-ip -- minimal-vm
 fe80::f425:e2ff:fe48:581e%bridge100
+$ nix run .\#get-vm-ip -- minimal-vm -4
+192.168.64.2
 ```
 
 ## Enable the GUI
@@ -36,14 +39,13 @@ Set `virtualisation.graphics = true;` in `configuration.nix`.
   via `virtio-fs`. Used for a writable overlay over the hosts nix store by default*
 * Rosetta - by leveraging vfkit´s and NixOS´ Rosetta integrations you can build derivations for both `aarch64-linux` and `x86_64-linux` in the VM.
 * Bridged networking via `virto-net`.
-  At least on macOS 15, it [seems non-trivial to match dhcp leases](https://github.com/crc-org/vfkit/issues/242) to virtual machines, but that's not too much of an issue if one uses ipv6 link local adresses.
 * Graphical mode with virtio-gpu. vfkit´s GUI seems to be still limited though, e.g.
   no copy & paste support(?).
 
 # What needs work
 
 * Persistence: `virtio-blk` is quite easy to use, just needs a nice interface on the module side. I didn't bother so far, as `virtio-fs` works well enough atm.  
-There's a branch `disk` in which I played around with formatting a `virtio-blk` device wich systemd-repart on first boot, but didn't finish taht yet.
+There's a branch `disk` in which I played around with formatting a `virtio-blk` device wich systemd-repart on first boot, but didn't finish that yet.
 * VM Tests with our vfkit VMs would be awesome.
 * Might be worth a try to (optionally) replace qemu in nix-darwins linux-builder vm for rosetta.
 * This list: There's much to explore & still a bit to clean-up.

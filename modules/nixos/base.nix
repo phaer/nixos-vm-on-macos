@@ -79,6 +79,8 @@
       systemd.network.networks."10-uplink" = {
         matchConfig.Name = lib.mkDefault "en* eth*";
         networkConfig.DHCP = lib.mkDefault "yes";
+        # Opt-in to using the machines mac as a DHCP identifier,
+        # instead of a GUID. This makes VM IP adresses more predictable.
         dhcpV4Config.ClientIdentifier = lib.mkDefault "mac";
       };
     }

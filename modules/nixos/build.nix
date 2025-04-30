@@ -1,6 +1,7 @@
 {
   lib,
   config,
+  pkgs,
   ...
 }:
 {
@@ -23,16 +24,20 @@
       };
     };
 
+  # Instantiate our nixpkgs version once more, this time for darwin.
+  # This is needed so that we get binaries for darwin, not linux for
+  # all of the dependencies the script below, such as bash # to vfkit.
+  # With blueprint there's currently no nicer way to pass this through
+  # as far as i know.
+  config.virtualisation.host.pkgs = import pkgs.path {
+    system = "${config.nixpkgs.hostPlatform.qemuArch}-darwin";
+  };
+
   config.system.build.vm =
     let
       cfg = config.virtualisation;
 
-      # Instantiate our nixpkgs version once more, this time for darwin.
-      # This is needed so that we get binaries for darwin, not linux for
-      # all of the dependencies the script below, such as bash # to vfkit.
-      pkgsDarwin = import config.nixpkgs.flake.source {
-        system = "${config.nixpkgs.hostPlatform.qemuArch}-darwin";
-      };
+      hostPkgs = cfg.host.pkgs;
 
       kernel = "${config.system.build.toplevel}/kernel";
       initrd = "${config.system.build.toplevel}/initrd";
@@ -56,10 +61,10 @@
       '';
 
     in
-    pkgsDarwin.writeShellApplication {
+    hostPkgs.writeShellApplication {
       name = "vfkit-vm";
       runtimeInputs = [
-        pkgsDarwin.vfkit
+        hostPkgs.vfkit
       ];
       text = ''
         vfkit \

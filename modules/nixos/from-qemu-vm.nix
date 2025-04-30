@@ -1,5 +1,5 @@
 # Options borrowed from nixpkgs/nixos/modules/virtualisation/qemu-vm.nix
-{ lib, config, modulesPath, ... }:
+{ lib, config, pkgs, options, modulesPath, ... }:
 let
   inherit (lib) mkOption types;
 in
@@ -34,6 +34,19 @@ in
       # - writableStore
       # - writableStoreUseTmpfs
       # - useHostCerts
+
+    virtualisation.host.pkgs = mkOption {
+      type = options.nixpkgs.pkgs.type;
+      default = pkgs;
+      defaultText = lib.literalExpression "pkgs";
+      example = lib.literalExpression ''
+        import pkgs.path { system = "x86_64-darwin"; }
+      '';
+      description = ''
+        Package set to use for the host-specific packages of the VM runner.
+        Changing this to e.g. a Darwin package set allows running NixOS VMs on Darwin.
+      '';
+    };
 
       virtualisation.memorySize = mkOption {
         type = types.ints.positive;

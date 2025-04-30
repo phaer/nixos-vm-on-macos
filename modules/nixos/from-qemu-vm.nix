@@ -17,7 +17,6 @@ in
 
 
     config = {
-      virtualisation.diskSizeAutoSupported = false;
 
       assertions = [
         {
@@ -26,6 +25,28 @@ in
           message = "virtualisation.forwardPorts is currently not implemented with vfkit. Full networking via IP is available.";
         }
       ];
+
+      security.pki.installCACerts = lib.mkIf config.virtualisation.useHostCerts false;
+
+      virtualisation.diskSizeAutoSupported = false;
+
+      virtualisation.sharedDirectories = {
+        xchg = {
+          source = ''"$TMPDIR"/xchg'';
+          securityModel = "none";
+          target = "/tmp/xchg";
+        };
+        shared = {
+          source = ''"''${SHARED_DIR:-$TMPDIR/xchg}"'';
+          target = "/tmp/shared";
+          securityModel = "none";
+        };
+        certs = lib.mkIf config.virtualisation.useHostCerts {
+          source = ''"$TMPDIR"/certs'';
+          target = "/etc/ssl/certs";
+          securityModel = "none";
+        };
+      };
     };
 
     options = {
@@ -33,7 +54,6 @@ in
       # - useNixStoreImage
       # - writableStore
       # - writableStoreUseTmpfs
-      # - useHostCerts
 
     virtualisation.host.pkgs = mkOption {
       type = options.nixpkgs.pkgs.type;
@@ -113,6 +133,14 @@ in
         {option}`virtualisation.useBootLoader` instead.
       '';
     };
+      virtualisation.useHostCerts = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          If enabled, when `NIX_SSL_CERT_FILE` is set on the host,
+        pass the CA certificates from the host to the VM.
+        '';
+      };
 
       virtualisation.graphics = mkOption {
         type = types.bool;

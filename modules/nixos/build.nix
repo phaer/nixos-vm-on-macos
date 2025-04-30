@@ -67,6 +67,25 @@
         hostPkgs.vfkit
       ];
       text = ''
+        #!${hostPkgs.runtimeShell}
+        set -euo pipefail
+
+        echo "Starting VM"
+
+        TMPDIR="$(mktemp --directory --suffix="vfkit-nixos-vm")"
+        trap "rm -rf $TMPDIR" EXIT
+
+        mkdir -p "$TMPDIR/xchg"
+
+        ${lib.optionalString cfg.useHostCerts ''
+          mkdir -p "$TMPDIR/certs"
+          if [ -e "$NIX_SSL_CERT_FILE" ]; then
+            cp -L "$NIX_SSL_CERT_FILE" "$TMPDIR"/certs/ca-certificates.crt
+          else
+            echo \$NIX_SSL_CERT_FILE should point to a valid file if virtualisation.useHostCerts is enabled.
+          fi
+        ''}
+
         vfkit \
         --bootloader "linux,kernel=${kernel},initrd=${initrd},cmdline=\"${cmdline}\"" \
           --device "virtio-net,nat${macAddress}" \

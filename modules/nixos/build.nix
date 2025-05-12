@@ -47,9 +47,9 @@
       rosetta = lib.optionalString cfg.rosetta.enable "--device rosetta,mountTag=rosetta";
       macAddress = lib.optionalString (cfg.macAddress != null) ",mac=${cfg.macAddress}";
       sharedDirectories = lib.optionalString (cfg.sharedDirectories != null) (
-        lib.concatStringsSep "\\\n" (
+        lib.concatStringsSep " \\\n" (
           lib.mapAttrsToList (
-            name: value: "--device \"virtio-fs,sharedDir=${value.source},mountTag=${name}\""
+            name: value: "--device virtio-fs,sharedDir=${value.source},mountTag=${name}"
           ) cfg.sharedDirectories
         )
       );
@@ -73,7 +73,7 @@
         echo "Starting VM"
 
         TMPDIR="$(mktemp --directory --suffix="vfkit-nixos-vm")"
-        trap "rm -rf $TMPDIR" EXIT
+        trap 'rm -rf $TMPDIR' EXIT
 
         mkdir -p "$TMPDIR/xchg"
 

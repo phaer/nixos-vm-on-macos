@@ -2,6 +2,7 @@
 { lib, config, pkgs, options, modulesPath, ... }:
 let
   inherit (lib) mkOption types;
+  cfg = config.virtualisation;
 in
   {
     imports = [
@@ -14,19 +15,20 @@ in
       "${modulesPath}/virtualisation/qemu-vm.nix"
     ];
 
-
-
     config = {
-
+      warnings = lib.optionals
+        # TODO: support at least the SSH forwarding from host 22 -> guest cfg.darwin-builder.hostPort
+        (cfg.forwardPorts != [])
+        ["virtualisation.forwardPorts is currently not implemented with vfkit. Full networking via IP is available."];
       assertions = [
         {
-          # TODO: support at least the SSH forwarding from host 22 -> guest cfg.darwin-builder.hostPort
-          assertion = config.virtualisation.forwardPorts == [];
-          message = "virtualisation.forwardPorts is currently not implemented with vfkit. Full networking via IP is available.";
+          # TODO: should just be another optional mount
+          assertion = !cfg.writableStoreUseTmpfs;
+          message = "virtualisation.writableStoreUseTmpfs is currently not implemented with vfkit.";
         }
       ];
 
-      security.pki.installCACerts = lib.mkIf config.virtualisation.useHostCerts false;
+      security.pki.installCACerts = lib.mkIf cfg.useHostCerts false;
 
       virtualisation.diskSizeAutoSupported = false;
 
@@ -41,19 +43,45 @@ in
           target = "/tmp/shared";
           securityModel = "none";
         };
-        certs = lib.mkIf config.virtualisation.useHostCerts {
+        certs = lib.mkIf cfg.useHostCerts {
           source = ''"$TMPDIR"/certs'';
           target = "/etc/ssl/certs";
           securityModel = "none";
         };
       };
+
+      virtualisation.fileSystems = {
+          "/nix/store" = lib.mkIf (cfg.useNixStoreImage || cfg.mountHostNixStore) (
+            if cfg.writableStore then
+              {
+                overlay = {
+                  lowerdir = [ "/nix/.ro-store" ];
+                  upperdir = "/nix/.rw-store/upper";
+                  workdir = "/nix/.rw-store/work";
+                };
+              }
+            else
+              {
+                device = "/nix/.ro-store";
+                options = [ "bind" ];
+              }
+          );
+          "/nix/.ro-store" = lib.mkIf cfg.useNixStoreImage {
+            device = "/dev/disk/by-label/nix-store";
+            fsType = "erofs";
+            neededForBoot = true;
+            options = [ "ro" ];
+          };
+          "/nix/.rw-store" = lib.mkIf (cfg.writableStore && cfg.writableStoreUseTmpfs) {
+            fsType = "tmpfs";
+            options = [ "mode=0755" ];
+            neededForBoot = true;
+          };
+        };
     };
 
     options = {
-      # TODO:
-      # - useNixStoreImage
-      # - writableStore
-      # - writableStoreUseTmpfs
+    virtualisation.fileSystems = options.fileSystems;
 
     virtualisation.host.pkgs = mkOption {
       type = options.nixpkgs.pkgs.type;
@@ -97,6 +125,23 @@ in
               type = types.path;
               description = "The mount point of the directory inside the virtual machine";
             };
+            options.securityModel = mkOption {
+              type = types.enum [
+                "passthrough"
+                "mapped-xattr"
+                "mapped-file"
+                "none"
+              ];
+              default = "mapped-xattr";
+              description = ''
+                The security model to use for this share:
+
+              - `passthrough`: files are stored using the same credentials as they are created on the guest (this requires QEMU to run as root)
+              - `mapped-xattr`: some of the file attributes like uid, gid, mode bits and link target are stored as file attributes
+              - `mapped-file`: the attributes are stored in the hidden .virtfs_metadata directory. Directories exported by this security model cannot interact with other unix tools
+              - `none`: same as "passthrough" except the sever won't report failures if it fails to set file attributes like ownership
+              '';
+            };
           }
         );
         default = { };
@@ -112,11 +157,29 @@ in
         '';
       };
 
-    virtualisation.useNixStoreImage = mkOption {
-      type = types.bool;
-      default = false;
-      description = ''
-        Build and use a disk image for the Nix store, instead of
+      virtualisation.additionalPaths = mkOption {
+        type = types.listOf types.path;
+        default = [ ];
+        description = ''
+          A list of paths whose closure should be made available to
+        the VM.
+
+        When 9p is used, the closure is registered in the Nix
+        database in the VM. All other paths in the host Nix store
+        appear in the guest Nix store as well, but are considered
+        garbage (because they are not registered in the Nix
+        database of the guest).
+
+        When {option}`virtualisation.useNixStoreImage` is
+        set, the closure is copied to the Nix store image.
+        '';
+      };
+
+      virtualisation.useNixStoreImage = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Build and use a disk image for the Nix store, instead of
         accessing the host's one through 9p.
 
         For applications which do a lot of reads from the store,
@@ -131,8 +194,31 @@ in
         If you want a full disk image with a partition table and a root
         filesystem instead of only a store image, enable
         {option}`virtualisation.useBootLoader` instead.
-      '';
-    };
+        '';
+      };
+
+      virtualisation.writableStore = mkOption {
+        type = types.bool;
+        default = cfg.mountHostNixStore;
+        defaultText = lib.literalExpression "cfg.mountHostNixStore";
+        description = ''
+          If enabled, the Nix store in the VM is made writable by
+        layering an overlay filesystem on top of the host's Nix
+        store.
+
+        By default, this is enabled if you mount a host Nix store.
+        '';
+      };
+
+      virtualisation.writableStoreUseTmpfs = mkOption {
+        type = types.bool;
+        default = true;
+        description = ''
+          Use a tmpfs for the writable store instead of writing to the VM's
+        own filesystem.
+        '';
+      };
+
       virtualisation.useHostCerts = mkOption {
         type = types.bool;
         default = false;
@@ -234,5 +320,5 @@ in
         :::
         '';
       };
-  };
-}
+    };
+  }

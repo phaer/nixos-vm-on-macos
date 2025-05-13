@@ -60,6 +60,11 @@
         --gui \
       '';
 
+
+      regInfo = hostPkgs.closureInfo { rootPaths = config.virtualisation.additionalPaths; };
+
+      useWritableStoreImage = cfg.writableStore && !cfg.writableStoreUseTmpfs;
+
     in
     hostPkgs.writeShellApplication {
       name = "vfkit-vm";
@@ -70,12 +75,49 @@
         #!${hostPkgs.runtimeShell}
         set -euo pipefail
 
-        echo "Starting VM"
+        ${lib.optionalString useWritableStoreImage ''
+          if [ ! -f store-writable.img ]
+          then
+            # FIXME make customizable, use virtualisation.diskSize (currently used for / in tmpfs)
+            truncate -s 20G store-writable.img
+          fi
+        ''}
+
+        echo "Starting vfkit VM"
 
         TMPDIR="$(mktemp --directory --suffix="vfkit-nixos-vm")"
         trap 'rm -rf $TMPDIR' EXIT
 
         mkdir -p "$TMPDIR/xchg"
+
+        ${lib.optionalString (cfg.useNixStoreImage) ''
+          echo "Creating Nix store image..."
+
+          ${hostPkgs.gnutar}/bin/tar --create \
+            --absolute-names \
+            --verbatim-files-from \
+            --transform 'flags=rSh;s|/nix/store/||' \
+            --transform 'flags=rSh;s|~nix~case~hack~[[:digit:]]\+||g' \
+            --files-from ${
+              hostPkgs.closureInfo {
+                rootPaths = [
+                  config.system.build.toplevel
+                  regInfo
+                ];
+              }
+            }/store-paths \
+            | ${hostPkgs.erofs-utils}/bin/mkfs.erofs \
+              --quiet \
+              --force-uid=0 \
+              --force-gid=0 \
+              -L nix-store \
+              -U eb176051-bd15-49b7-9e6b-462e0b467019 \
+              -T 0 \
+              --tar=f \
+              "$TMPDIR"/store.img
+
+         echo "Created Nix store image."
+        ''}
 
         ${lib.optionalString cfg.useHostCerts ''
           mkdir -p "$TMPDIR/certs"
@@ -92,6 +134,8 @@
           --device virtio-serial,stdio \
           --device virtio-rng \
           --device virtio-fs,sharedDir=/nix/store/,mountTag=nix-store \
+          ${lib.optionalString cfg.useNixStoreImage "--device nvme,path=\"$TMPDIR\"/store.img"} \
+          ${lib.optionalString useWritableStoreImage "--device nvme,path=store-writable.img"} \
           ${sharedDirectories} \
           ${graphics} \
           ${rosetta} \

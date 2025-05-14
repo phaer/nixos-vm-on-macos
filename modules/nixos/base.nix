@@ -49,10 +49,14 @@
       # Disable it as we do direct boot and don't need a bootloader.
       boot.loader.grub.enable = false;
 
-      # We don't use zfs and therefore can use the newest
-      # Linux kernels.
-      boot.supportedFilesystems.zfs = false;
-      boot.kernelPackages = pkgs.linuxPackages_latest;
+      # We don't use zfs and therefore could use the newest
+      # Linux kernels. But rosetta currently fails on my
+      # macOS Sequioa machine due to unknown "auxillary vector
+      # types" and an older guest kernel seems to work around
+      # that.
+      # boot.supportedFilesystems.zfs = false;
+      # boot.kernelPackages = pkgs.linuxPackages_latest;
+      boot.kernelPackages = pkgs.linuxPackages;
     }
 
     # Kernel parameters & modules

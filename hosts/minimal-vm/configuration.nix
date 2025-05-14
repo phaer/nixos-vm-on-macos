@@ -21,7 +21,7 @@
     memorySize = lib.mkDefault (4 * 1024);
     sharedDirectories = {
       persistent = {
-        source = "$PWD/persistent";
+        source = ''"$PWD/persistent"'';
         target = "/persistent";
       };
     };

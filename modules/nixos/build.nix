@@ -70,6 +70,7 @@
       name = "vfkit-vm";
       runtimeInputs = [
         hostPkgs.vfkit
+        hostPkgs.coreutils
       ];
       text = ''
         #!${hostPkgs.runtimeShell}

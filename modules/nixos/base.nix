@@ -49,10 +49,14 @@
       # Disable it as we do direct boot and don't need a bootloader.
       boot.loader.grub.enable = false;
 
-      # We don't use zfs and therefore can use the newest
-      # Linux kernels.
-      boot.supportedFilesystems.zfs = false;
-      boot.kernelPackages = pkgs.linuxPackages_latest;
+      # We don't use zfs and therefore could use the newest
+      # Linux kernels. But rosetta currently fails on my
+      # macOS Sequioa machine due to unknown "auxillary vector
+      # types" and an older guest kernel seems to work around
+      # that.
+      # boot.supportedFilesystems.zfs = false;
+      # boot.kernelPackages = pkgs.linuxPackages_latest;
+      boot.kernelPackages = pkgs.linuxPackages;
     }
 
     # Kernel parameters & modules
@@ -79,19 +83,43 @@
       systemd.network.networks."10-uplink" = {
         matchConfig.Name = lib.mkDefault "en* eth*";
         networkConfig.DHCP = lib.mkDefault "yes";
+        # Opt-in to using the machines mac as a DHCP identifier,
+        # instead of a GUID. This makes VM IP adresses more predictable.
         dhcpV4Config.ClientIdentifier = lib.mkDefault "mac";
       };
     }
 
     ## Filesystem Layout
     {
+      # By default, use mkVMOverride to enable building test VMs (e.g. via
+      # `nixos-rebuild build-vm`) of a system configuration, where the regular
+      # value for the `fileSystems' attribute should be disregarded (since those
+      # filesystems don't necessarily exist in the VM). You can disable this
+      # override by setting `virtualisation.fileSystems = lib.mkForce { };`.
+      fileSystems = lib.mkIf (config.virtualisation.fileSystems != { })
+        (lib.mkVMOverride config.virtualisation.fileSystems);
+
       # This probably needs some improvements and should become easier
       # to customize and persistent storage should be added.
-      # But for now it just boots into a small tmpfs with
-      # the hosts nix store mounted read-only but overlayed with
-      # another tmpfs.
-      fileSystems =
-        {
+
+      # It just boots into tmpfs
+      # with the hosts nix store mounted read-only but overlayed with
+      # another tmpfs by default.
+
+      # If virtualisation.useNixStoreImage is set, we create a store.img
+      # erofs image before starting the vm and mount that readOnly to
+      # overlay with tmpfs at runtime.
+      #
+      # If both, virtualisation.useNixStoreImage and writableStore are set,
+      # but writableStoreUseTmpfs is unset, we overlay store-writable.img
+      # instead.
+      #
+      # The split image model is still kept in order to allow users to
+      # switch between both modes easily, but this might be reconsidered later
+
+      virtualisation.fileSystems =
+        lib.mkMerge [
+          {
           "/" = {
             device = "none";
             fsType = "tmpfs";
@@ -101,26 +129,23 @@
               "mode=755"
             ];
           };
-          "/nix/store" = {
-            overlay = {
-              lowerdir = [ "/nix/.ro-store" ];
-              upperdir = "/nix/.rw-store/upper";
-              workdir = "/nix/.rw-store/work";
+          # Upstream qemu-vm.nix uses a persistent disk for mutable state
+          # by default. We only use a tmpfs, so we persist the writeable /nix/store overlay part manually
+          "/nix/.rw-store" = lib.mkIf (config.virtualisation.writableStore && !config.virtualisation.writableStoreUseTmpfs) {
+            fsType = "ext4";
+            device = "/dev/disk/by-label/nix-store-write";
+            neededForBoot = true;
+          };
+          }
+          # Mount point from rosetta.nix gets deleted when we override
+          # fileSystems with virtualisation.fileSystems, so we re-add it.
+          (lib.mkIf config.virtualisation.rosetta.enable {
+            "${config.virtualisation.rosetta.mountPoint}" = {
+              device = config.virtualisation.rosetta.mountTag;
+              fsType = "virtiofs";
             };
-          };
-          "/nix/.ro-store" = {
-            device = "nix-store";
-            fsType = "virtiofs";
-            neededForBoot = true;
-            options = [ "ro" ];
-          };
-          "/nix/.rw-store" = {
-            fsType = "tmpfs";
-            options = [ "mode=0755" ];
-            neededForBoot = true;
-          };
-        }
-        // (lib.optionalAttrs (config.virtualisation.sharedDirectories != { }) (
+          })
+        (lib.optionalAttrs (config.virtualisation.sharedDirectories != { }) (
           lib.mapAttrs' (name: value: {
             name = value.target;
             value = {
@@ -128,8 +153,24 @@
               fsType = "virtiofs";
             };
           }) config.virtualisation.sharedDirectories
-        ));
+        ))
+        ];
     }
+
+    (lib.mkIf (config.virtualisation.writableStore && !config.virtualisation.writableStoreUseTmpfs) {
+      boot.initrd.systemd.repart = {
+        enable = true;
+        empty = "allow";
+        device = "/dev/nvme1n1";
+      };
+      systemd.repart.partitions = {
+        "10-nix-store-writable" = {
+          Type = "linux-generic";
+          Label = "nix-store-write";
+          Format = "ext4";
+        };
+      };
+    })
 
   ];
 }

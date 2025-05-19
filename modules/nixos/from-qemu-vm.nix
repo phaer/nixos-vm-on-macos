@@ -20,13 +20,6 @@ in
         # TODO: support at least the SSH forwarding from host 22 -> guest cfg.darwin-builder.hostPort
         (cfg.forwardPorts != [])
         ["virtualisation.forwardPorts is currently not implemented with vfkit. Full networking via IP is available."];
-      assertions = [
-        {
-          # TODO: should just be another optional mount
-          assertion = !cfg.writableStoreUseTmpfs;
-          message = "virtualisation.writableStoreUseTmpfs is currently not implemented with vfkit.";
-        }
-      ];
 
       security.pki.installCACerts = lib.mkIf cfg.useHostCerts false;
 
@@ -196,6 +189,31 @@ in
         {option}`virtualisation.useBootLoader` instead.
         '';
       };
+
+    virtualisation.mountHostNixStore = mkOption {
+      type = types.bool;
+      default = !cfg.useNixStoreImage && !cfg.useBootLoader;
+      defaultText = lib.literalExpression "!cfg.useNixStoreImage && !cfg.useBootLoader";
+      description = ''
+        Mount the host Nix store as a 9p mount.
+      '';
+    };
+
+    virtualisation.useBootLoader = mkOption {
+      type = types.bool;
+      default = false;
+      description = ''
+        Use a boot loader to boot the system.
+        This allows, among other things, testing the boot loader.
+
+        If disabled, the kernel and initrd are directly booted,
+        forgoing any bootloader.
+
+        Check the documentation on {option}`virtualisation.directBoot.enable` for details.
+      '';
+    };
+
+
 
       virtualisation.writableStore = mkOption {
         type = types.bool;

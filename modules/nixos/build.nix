@@ -134,7 +134,7 @@
           --device "virtio-net,nat${macAddress}" \
           --device virtio-serial,stdio \
           --device virtio-rng \
-          --device virtio-fs,sharedDir=/nix/store/,mountTag=nix-store \
+          ${lib.optionalString cfg.mountHostNixStore "--device virtio-fs,sharedDir=/nix/store/,mountTag=nix-store"} \
           ${lib.optionalString cfg.useNixStoreImage "--device nvme,path=\"$TMPDIR\"/store.img"} \
           ${lib.optionalString useWritableStoreImage "--device nvme,path=store-writable.img"} \
           ${sharedDirectories} \

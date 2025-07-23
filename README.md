@@ -1,5 +1,3 @@
-Note: This is currently slightly broken on main, but I do lack time resources to fix right Away. I'll remove this notice when done.
-
 # NixOS VM on macOS
 
 This repository contains code to build and run [NixOS](https://nixos.org) in virtual machines on macOS. It uses [vfkit](https://github.com/crc-org/vfkit) as [qemu](https://www.qemu.org/) doesn't support [apple´s virtualisation framework](https://developer.apple.com/documentation/virtualization), and [UTM](https://mac.getutm.app/) isn't as easy to configure from nix expressions.

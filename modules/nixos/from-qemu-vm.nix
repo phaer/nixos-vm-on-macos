@@ -59,9 +59,9 @@ in
                 options = [ "bind" ];
               }
           );
-          "/nix/.ro-store" = lib.mkIf cfg.useNixStoreImage {
-            device = "/dev/disk/by-label/nix-store";
-            fsType = "erofs";
+          "/nix/.ro-store" = lib.mkIf (cfg.useNixStoreImage || cfg.mountHostNixStore) {
+            device = if cfg.mountHostNixStore then "nix-store" else "/dev/disk/by-label/nix-store";
+            fsType = if cfg.mountHostNixStore then "virtiofs" else "erofs";
             neededForBoot = true;
             options = [ "ro" ];
           };

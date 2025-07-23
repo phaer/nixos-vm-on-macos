@@ -41,7 +41,7 @@
       # FIXME: unset forwarded ports from nix-builder-vm, because
       # we don't have the options for vfkit implemented yet. That could
       # be done, but we do have a full, routable ip anyway.
-      forwardPorts = lib.mkForce [];
+      forwardPorts = lib.mkForce [ ];
     };
     # Set a static MAC address to get the same IP every time.
     # This is an optional, non-upstream option defined in this repo.

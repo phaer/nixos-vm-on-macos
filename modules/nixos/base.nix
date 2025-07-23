@@ -96,8 +96,9 @@
       # value for the `fileSystems' attribute should be disregarded (since those
       # filesystems don't necessarily exist in the VM). You can disable this
       # override by setting `virtualisation.fileSystems = lib.mkForce { };`.
-      fileSystems = lib.mkIf (config.virtualisation.fileSystems != { })
-        (lib.mkVMOverride config.virtualisation.fileSystems);
+      fileSystems = lib.mkIf (config.virtualisation.fileSystems != { }) (
+        lib.mkVMOverride config.virtualisation.fileSystems
+      );
 
       # This probably needs some improvements and should become easier
       # to customize and persistent storage should be added.
@@ -117,9 +118,8 @@
       # The split image model is still kept in order to allow users to
       # switch between both modes easily, but this might be reconsidered later
 
-      virtualisation.fileSystems =
-        lib.mkMerge [
-          {
+      virtualisation.fileSystems = lib.mkMerge [
+        {
           "/" = {
             device = "none";
             fsType = "tmpfs";
@@ -131,20 +131,22 @@
           };
           # Upstream qemu-vm.nix uses a persistent disk for mutable state
           # by default. We only use a tmpfs, so we persist the writeable /nix/store overlay part manually
-          "/nix/.rw-store" = lib.mkIf (config.virtualisation.writableStore && !config.virtualisation.writableStoreUseTmpfs) {
-            fsType = "ext4";
-            device = "/dev/disk/by-label/nix-store-write";
-            neededForBoot = true;
+          "/nix/.rw-store" =
+            lib.mkIf (config.virtualisation.writableStore && !config.virtualisation.writableStoreUseTmpfs)
+              {
+                fsType = "ext4";
+                device = "/dev/disk/by-label/nix-store-write";
+                neededForBoot = true;
+              };
+        }
+        # Mount point from rosetta.nix gets deleted when we override
+        # fileSystems with virtualisation.fileSystems, so we re-add it.
+        (lib.mkIf config.virtualisation.rosetta.enable {
+          "${config.virtualisation.rosetta.mountPoint}" = {
+            device = config.virtualisation.rosetta.mountTag;
+            fsType = "virtiofs";
           };
-          }
-          # Mount point from rosetta.nix gets deleted when we override
-          # fileSystems with virtualisation.fileSystems, so we re-add it.
-          (lib.mkIf config.virtualisation.rosetta.enable {
-            "${config.virtualisation.rosetta.mountPoint}" = {
-              device = config.virtualisation.rosetta.mountTag;
-              fsType = "virtiofs";
-            };
-          })
+        })
         (lib.optionalAttrs (config.virtualisation.sharedDirectories != { }) (
           lib.mapAttrs' (name: value: {
             name = value.target;
@@ -154,7 +156,7 @@
             };
           }) config.virtualisation.sharedDirectories
         ))
-        ];
+      ];
     }
 
     (lib.mkIf (config.virtualisation.writableStore && !config.virtualisation.writableStoreUseTmpfs) {
